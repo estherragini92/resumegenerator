@@ -89,9 +89,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
-if DATABASE_URL:
+if DATABASE_URL.startswith(("postgres://", "postgresql://")):
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
@@ -105,12 +105,11 @@ else:
             "ENGINE": "django.db.backends.postgresql",
             "NAME": "ai_resume_db",
             "USER": "postgres",
-            "PASSWORD": os.getenv("postgres@123"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
             "HOST": "localhost",
             "PORT": "5432",
         }
     }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -175,5 +174,5 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
 
