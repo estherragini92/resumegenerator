@@ -175,4 +175,4 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
-
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")

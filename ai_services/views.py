@@ -1,8 +1,7 @@
 import json
 import os
 
-import requests
-from requests.exceptions import ConnectionError, RequestException, Timeout
+from groq import Groq
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,32 +22,26 @@ class GenerateResumeView(APIView):
                 status=400,
             )
 
-        # Ollama should run only when it is enabled.
-        if os.getenv("OLLAMA_ENABLED", "False").lower() != "true":
+        groq_api_key = os.getenv("GROQ_API_KEY")
+
+        if not groq_api_key:
             return Response(
-                {
-                    "error": (
-                        "AI generation is available only in the local demo "
-                        "version. The deployed backend is not connected to "
-                        "an online AI model."
-                    )
-                },
-                status=503,
+                {"error": "GROQ_API_KEY is missing."},
+                status=500,
             )
 
         instruction = f"""
 You are a professional ATS-friendly resume writer.
 
-Create a professional resume using only the user information.
+Create a professional resume using only the information supplied by the user.
 
 Rules:
 1. Do not invent personal information.
 2. Leave missing values empty.
-3. Return only valid JSON.
-4. Do not use markdown or code fences.
-5. Improve the professional summary and project descriptions.
-6. Use clear and professional language.
-7. Do not invent education, experience, dates, companies, or institutions.
+3. Do not invent companies, institutions, dates, qualifications, or experience.
+4. Improve the professional summary and project descriptions.
+5. Return only valid JSON.
+6. Do not include markdown or code fences.
 
 Return exactly this JSON structure:
 
@@ -80,25 +73,36 @@ User information:
         generated_text = ""
 
         try:
-            ollama_response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": "gemma3:4b",
-                    "prompt": instruction,
-                    "format": "json",
-                    "stream": False,
+            client = Groq(api_key=groq_api_key)
+
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You generate professional ATS-friendly resumes "
+                            "and return only valid JSON."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": instruction,
+                    },
+                ],
+                temperature=0.3,
+                response_format={
+                    "type": "json_object",
                 },
-                timeout=600,
             )
 
-            ollama_response.raise_for_status()
-
-            ollama_data = ollama_response.json()
-            generated_text = ollama_data.get("response", "").strip()
+            generated_text = (
+                response.choices[0].message.content or ""
+            ).strip()
 
             if not generated_text:
                 return Response(
-                    {"error": "Ollama returned an empty response."},
+                    {"error": "Groq returned an empty response."},
                     status=502,
                 )
 
@@ -139,49 +143,19 @@ User information:
                 status=201,
             )
 
-        except ConnectionError:
-            return Response(
-                {
-                    "error": (
-                        "Cannot connect to Ollama. Open the Ollama "
-                        "application or run 'ollama serve'."
-                    )
-                },
-                status=503,
-            )
-
-        except Timeout:
-            return Response(
-                {
-                    "error": (
-                        "Ollama took too long to respond. "
-                        "Try using a shorter prompt."
-                    )
-                },
-                status=504,
-            )
-
         except json.JSONDecodeError:
             return Response(
                 {
-                    "error": "Ollama returned invalid JSON.",
+                    "error": "Groq returned invalid JSON.",
                     "raw_response": generated_text,
                 },
                 status=502,
             )
 
-        except RequestException as error:
-            return Response(
-                {
-                    "error": f"Ollama request failed: {str(error)}"
-                },
-                status=500,
-            )
-
         except Exception as error:
             return Response(
                 {
-                    "error": f"Unexpected error: {str(error)}"
+                    "error": str(error),
                 },
                 status=500,
             )
