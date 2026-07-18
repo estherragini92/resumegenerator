@@ -161,12 +161,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    "https://resumefrontend-kappa.vercel.app/",
+    "https://resumefrontend-kappa.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://ai-resume-gdso.onrender.com",
-    "https://resumefrontend-kappa.vercel.app/",
+    "https://resumefrontend-kappa.vercel.app",
 ]
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
